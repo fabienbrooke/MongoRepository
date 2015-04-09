@@ -28,11 +28,10 @@
         /// </summary>
         /// <param name="url">The url to use to get the database from.</param>
         /// <returns>Returns a MongoDatabase from the specified url.</returns>
-        private static MongoDatabase GetDatabaseFromUrl(MongoUrl url)
+        private static IMongoDatabase GetDatabaseFromUrl(MongoUrl url)
         {
             var client = new MongoClient(url);
-            var server = client.GetServer();
-            return server.GetDatabase(url.DatabaseName); // WriteConcern defaulted to Acknowledged
+            return client.GetDatabase(url.DatabaseName); // WriteConcern defaulted to Acknowledged
         }
 
         /// <summary>
@@ -41,7 +40,7 @@
         /// <typeparam name="T">The type to get the collection of.</typeparam>
         /// <param name="connectionString">The connectionstring to use to get the collection from.</param>
         /// <returns>Returns a MongoCollection from the specified type and connectionstring.</returns>
-        public static MongoCollection<T> GetCollectionFromConnectionString<T>(string connectionString)
+        public static IMongoCollection<T> GetCollectionFromConnectionString<T>(string connectionString)
             where T : IEntity<U>
         {
             return Util<U>.GetCollectionFromConnectionString<T>(connectionString, GetCollectionName<T>());
@@ -54,7 +53,7 @@
         /// <param name="connectionString">The connectionstring to use to get the collection from.</param>
         /// <param name="collectionName">The name of the collection to use.</param>
         /// <returns>Returns a MongoCollection from the specified type and connectionstring.</returns>
-        public static MongoCollection<T> GetCollectionFromConnectionString<T>(string connectionString, string collectionName)
+        public static IMongoCollection<T> GetCollectionFromConnectionString<T>(string connectionString, string collectionName)
             where T : IEntity<U>
         {
             return Util<U>.GetDatabaseFromUrl(new MongoUrl(connectionString))
@@ -67,7 +66,7 @@
         /// <typeparam name="T">The type to get the collection of.</typeparam>
         /// <param name="url">The url to use to get the collection from.</param>
         /// <returns>Returns a MongoCollection from the specified type and url.</returns>
-        public static MongoCollection<T> GetCollectionFromUrl<T>(MongoUrl url)
+        public static IMongoCollection<T> GetCollectionFromUrl<T>(MongoUrl url)
             where T : IEntity<U>
         {
             return Util<U>.GetCollectionFromUrl<T>(url, GetCollectionName<T>());
@@ -80,7 +79,7 @@
         /// <param name="url">The url to use to get the collection from.</param>
         /// <param name="collectionName">The name of the collection to use.</param>
         /// <returns>Returns a MongoCollection from the specified type and url.</returns>
-        public static MongoCollection<T> GetCollectionFromUrl<T>(MongoUrl url, string collectionName)
+        public static IMongoCollection<T> GetCollectionFromUrl<T>(MongoUrl url, string collectionName)
             where T : IEntity<U>
         {
             return Util<U>.GetDatabaseFromUrl(url)

@@ -5,6 +5,7 @@
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Threading.Tasks;
 
     // TODO: Code coverage here is near-zero. A new RepoManagerTests.cs class needs to be created and we need to
     //      test these methods. Ofcourse we also need to update codeplex documentation on this entirely new object.
@@ -27,7 +28,7 @@
         /// <summary>
         /// MongoCollection field.
         /// </summary>
-        private MongoCollection<T> collection;
+        private IMongoCollection<T> collection;
 
         /// <summary>
         /// Initializes a new instance of the MongoRepositoryManager class.
@@ -64,7 +65,7 @@
         /// <value>Returns true when the collection already exists, false otherwise.</value>
         public virtual bool Exists
         {
-            get { return this.collection.Exists(); }
+            get { throw new NotImplementedException(); }
         }
 
         /// <summary>
@@ -73,15 +74,15 @@
         /// <value>The name of the collection as Mongo uses.</value>
         public virtual string Name
         {
-            get { return this.collection.Name; }
+            get { return this.collection.CollectionNamespace.CollectionName; }
         }
 
         /// <summary>
         /// Drops the collection.
         /// </summary>
-        public virtual void Drop()
+        public async virtual Task Drop()
         {
-            this.collection.Drop();
+            await this.collection.Database.DropCollectionAsync(this.Name);
         }
 
         /// <summary>
@@ -90,33 +91,37 @@
         /// <returns>Returns true when the repository is capped, false otherwise.</returns>
         public virtual bool IsCapped()
         {
-            return this.collection.IsCapped();
+            throw new NotImplementedException();
         }
 
         /// <summary>
         /// Drops specified index on the repository.
         /// </summary>
         /// <param name="keyname">The name of the indexed field.</param>
-        public virtual void DropIndex(string keyname)
+        public async virtual Task DropIndex(string keyname)
         {
-            this.DropIndexes(new string[] { keyname });
+            await this.collection.Indexes.DropOneAsync(keyname);
         }
 
         /// <summary>
         /// Drops specified indexes on the repository.
         /// </summary>
         /// <param name="keynames">The names of the indexed fields.</param>
-        public virtual void DropIndexes(IEnumerable<string> keynames)
+        public async virtual Task DropIndexes(IEnumerable<string> keynames)
         {
-            this.collection.DropIndex(keynames.ToArray());
+            var tasks = keynames.Select(async name =>
+            {
+                await this.DropIndex(name);
+            });
+            await Task.WhenAll(tasks);
         }
 
         /// <summary>
         /// Drops all indexes on this repository.
         /// </summary>
-        public virtual void DropAllIndexes()
+        public async virtual Task DropAllIndexes()
         {
-            this.collection.DropAllIndexes();
+            await this.collection.Indexes.DropAllAsync();
         }
 
         /// <summary>
@@ -197,7 +202,7 @@
         /// </remarks>
         public virtual void EnsureIndexes(IMongoIndexKeys keys, IMongoIndexOptions options)
         {
-            this.collection.CreateIndex(keys, options);
+            throw new NotImplementedException();
         }
 
         /// <summary>
@@ -217,7 +222,7 @@
         /// <returns>Returns true when the indexes exist, false otherwise.</returns>
         public virtual bool IndexesExists(IEnumerable<string> keynames)
         {
-            return this.collection.IndexExists(keynames.ToArray());
+            throw new NotImplementedException();
         }
 
         /// <summary>
@@ -225,27 +230,7 @@
         /// </summary>
         public virtual void ReIndex()
         {
-            this.collection.ReIndex();
-        }
-
-        /// <summary>
-        /// Gets the total size for the repository (data + indexes).
-        /// </summary>
-        /// <returns>Returns total size for the repository (data + indexes).</returns>
-        [Obsolete("This method will be removed in the next version of the driver")]
-        public virtual long GetTotalDataSize()
-        {
-            return this.collection.GetTotalDataSize();
-        }
-
-        /// <summary>
-        /// Gets the total storage size for the repository (data + indexes).
-        /// </summary>
-        /// <returns>Returns total storage size for the repository (data + indexes).</returns>
-        [Obsolete("This method will be removed in the next version of the driver")]
-        public virtual long GetTotalStorageSize()
-        {
-            return this.collection.GetTotalStorageSize();
+            throw new NotImplementedException();
         }
 
         /// <summary>
@@ -255,7 +240,7 @@
         /// <remarks>You will need to reference MongoDb.Driver.</remarks>
         public virtual ValidateCollectionResult Validate()
         {
-            return this.collection.Validate();
+            throw new NotImplementedException();
         }
 
         /// <summary>
@@ -265,7 +250,7 @@
         /// <remarks>You will need to reference MongoDb.Driver.</remarks>
         public virtual CollectionStatsResult GetStats()
         {
-            return this.collection.GetStats();
+            throw new NotImplementedException();
         }
 
         /// <summary>
@@ -274,7 +259,7 @@
         /// <returns>Returns the indexes for this repository.</returns>
         public virtual GetIndexesResult GetIndexes()
         {
-            return this.collection.GetIndexes();
+            throw new NotImplementedException();
         }
     }
 

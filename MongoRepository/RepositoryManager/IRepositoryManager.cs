@@ -3,6 +3,7 @@
     using System.Collections.Generic;
     using MongoDB.Driver;
     using System;
+    using System.Threading.Tasks;
 
     /// <summary>
     /// IRepositoryManager definition.
@@ -26,8 +27,8 @@
 
         /// <summary>
         /// Drops the repository.
-        /// </summary>
-        void Drop();
+        /// </summary>*
+        Task Drop();
 
         /// <summary>
         /// Tests whether the repository is capped.
@@ -39,18 +40,18 @@
         /// Drops specified index on the repository.
         /// </summary>
         /// <param name="keyname">The name of the indexed field.</param>
-        void DropIndex(string keyname);
+        Task DropIndex(string keyname);
 
         /// <summary>
         /// Drops specified indexes on the repository.
         /// </summary>
         /// <param name="keynames">The names of the indexed fields.</param>
-        void DropIndexes(IEnumerable<string> keynames);
+        Task DropIndexes(IEnumerable<string> keynames);
 
         /// <summary>
         /// Drops all indexes on this repository.
         /// </summary>
-        void DropAllIndexes();
+        Task DropAllIndexes();
 
         /// <summary>
         /// Ensures that the desired index exist and creates it if it doesn't exist.
@@ -125,18 +126,6 @@
         /// Runs the ReIndex command on this repository.
         /// </summary>
         void ReIndex();
-
-        /// <summary>
-        /// Gets the total size for the repository (data + indexes).
-        /// </summary>
-        /// <returns>Returns total size for the repository (data + indexes).</returns>
-        long GetTotalDataSize();
-
-        /// <summary>
-        /// Gets the total storage size for the repository (data + indexes).
-        /// </summary>
-        /// <returns>Returns total storage size for the repository (data + indexes).</returns>
-        long GetTotalStorageSize();
 
         /// <summary>
         /// Validates the integrity of the repository.

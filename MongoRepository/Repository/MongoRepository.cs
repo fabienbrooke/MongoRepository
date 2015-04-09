@@ -4,10 +4,12 @@
     using MongoDB.Driver;
     using MongoDB.Driver.Builders;
     using MongoDB.Driver.Linq;
+    using MongoDB.Driver.Linq.Translators;
     using System;
     using System.Collections.Generic;
     using System.Linq;
     using System.Linq.Expressions;
+    using System.Threading.Tasks;
 
     /// <summary>
     /// Deals with entities in MongoDb.
@@ -20,7 +22,7 @@
         /// <summary>
         /// MongoCollection field.
         /// </summary>
-        protected internal MongoCollection<T> collection;
+        protected internal IMongoCollection<T> collection;
 
         /// <summary>
         /// Initializes a new instance of the MongoRepository class.
@@ -79,7 +81,7 @@
         /// for most purposes you can use the MongoRepositoryManager&lt;T&gt;
         /// </remarks>
         /// <value>The Mongo collection (to perform advanced operations).</value>
-        public MongoCollection<T> Collection
+        public IMongoCollection<T> Collection
         {
             get { return this.collection; }
         }
@@ -89,7 +91,7 @@
         /// </summary>
         public string CollectionName
         {
-            get { return this.collection.Name; }
+            get { return this.collection.CollectionNamespace.CollectionName; }
         }
 
         /// <summary>
@@ -97,14 +99,15 @@
         /// </summary>
         /// <param name="id">The Id of the entity to retrieve.</param>
         /// <returns>The Entity T.</returns>
-        public virtual T GetById(TKey id)
+        public async virtual Task<T> GetById(TKey id)
         {
             if (typeof(T).IsSubclassOf(typeof(Entity)))
             {
-                return this.GetById(new ObjectId(id as string));
+                return await this.GetById(new ObjectId(id as string));
             }
 
-            return this.collection.FindOneByIdAs<T>(BsonValue.Create(id));
+            var filter = Builders<T>.Filter.Eq("_id", BsonValue.Create(id));
+            return await this.collection.Find<T>(filter).FirstOrDefaultAsync();
         }
 
         /// <summary>
@@ -112,9 +115,9 @@
         /// </summary>
         /// <param name="id">The Id of the entity to retrieve.</param>
         /// <returns>The Entity T.</returns>
-        public virtual T GetById(ObjectId id)
+        public async virtual Task<T> GetById(ObjectId id)
         {
-            return this.collection.FindOneByIdAs<T>(id);
+            return await this.collection.Find<T>(entity => id.Equals(entity.Id)).FirstOrDefaultAsync();
         }
 
         /// <summary>
@@ -122,10 +125,9 @@
         /// </summary>
         /// <param name="entity">The entity T.</param>
         /// <returns>The added entity including its new ObjectId.</returns>
-        public virtual T Add(T entity)
+        public async virtual Task<T> Add(T entity)
         {
-            this.collection.Insert<T>(entity);
-
+            await this.collection.InsertOneAsync(entity);
             return entity;
         }
 
@@ -133,9 +135,9 @@
         /// Adds the new entities in the repository.
         /// </summary>
         /// <param name="entities">The entities of type T.</param>
-        public virtual void Add(IEnumerable<T> entities)
+        public async virtual Task Add(IEnumerable<T> entities)
         {
-            this.collection.InsertBatch<T>(entities);
+            await this.collection.InsertManyAsync(entities);
         }
 
         /// <summary>
@@ -143,10 +145,9 @@
         /// </summary>
         /// <param name="entity">The entity.</param>
         /// <returns>The updated entity.</returns>
-        public virtual T Update(T entity)
+        public async virtual Task<T> Update(T entity)
         {
-            this.collection.Save<T>(entity);
-
+            await this.collection.ReplaceOneAsync<T>(x => entity.Id.Equals(x.Id), entity, new UpdateOptions { IsUpsert = true });
             return entity;
         }
 
@@ -154,27 +155,29 @@
         /// Upserts the entities.
         /// </summary>
         /// <param name="entities">The entities to update.</param>
-        public virtual void Update(IEnumerable<T> entities)
+        public async virtual Task Update(IEnumerable<T> entities)
         {
-            foreach (T entity in entities)
+            var tasks = entities.Select(async entity =>
             {
-                this.collection.Save<T>(entity);
-            }
+                await this.Update(entity);
+            });
+            await Task.WhenAll(tasks);
         }
 
         /// <summary>
         /// Deletes an entity from the repository by its id.
         /// </summary>
         /// <param name="id">The entity's id.</param>
-        public virtual void Delete(TKey id)
+        public async virtual Task Delete(TKey id)
         {
             if (typeof(T).IsSubclassOf(typeof(Entity)))
             {
-                this.collection.Remove(Query.EQ("_id", new ObjectId(id as string)));
+                await this.Delete(new ObjectId(id as string));
             }
             else
             {
-                this.collection.Remove(Query.EQ("_id", BsonValue.Create(id)));
+                var filter = Builders<T>.Filter.Eq("_id", BsonValue.Create(id));
+                await this.collection.DeleteOneAsync(filter);
             }
         }
 
@@ -182,47 +185,44 @@
         /// Deletes an entity from the repository by its ObjectId.
         /// </summary>
         /// <param name="id">The ObjectId of the entity.</param>
-        public virtual void Delete(ObjectId id)
+        public async virtual Task Delete(ObjectId id)
         {
-            this.collection.Remove(Query.EQ("_id", id));
+            await this.collection.DeleteOneAsync<T>(entity => id.Equals(entity.Id));
         }
 
         /// <summary>
         /// Deletes the given entity.
         /// </summary>
         /// <param name="entity">The entity to delete.</param>
-        public virtual void Delete(T entity)
+        public async virtual Task Delete(T entity)
         {
-            this.Delete(entity.Id);
+            await this.Delete(entity.Id);
         }
 
         /// <summary>
         /// Deletes the entities matching the predicate.
         /// </summary>
         /// <param name="predicate">The expression.</param>
-        public virtual void Delete(Expression<Func<T, bool>> predicate)
+        public async virtual Task Delete(Expression<Func<T, bool>> predicate)
         {
-            foreach (T entity in this.collection.AsQueryable<T>().Where(predicate))
-            {
-                this.Delete(entity.Id);
-            }
+            await this.collection.DeleteManyAsync<T>(predicate);
         }
 
         /// <summary>
         /// Deletes all entities in the repository.
         /// </summary>
-        public virtual void DeleteAll()
+        public async virtual Task DeleteAll()
         {
-            this.collection.RemoveAll();
+            await this.Delete(entity => true);
         }
 
         /// <summary>
         /// Counts the total entities in the repository.
         /// </summary>
         /// <returns>Count of entities in the collection.</returns>
-        public virtual long Count()
+        public async virtual Task<long> Count()
         {
-            return this.collection.Count();
+            return await this.collection.CountAsync<T>(entity => true);
         }
 
         /// <summary>
@@ -230,9 +230,10 @@
         /// </summary>
         /// <param name="predicate">The expression.</param>
         /// <returns>True when an entity matching the predicate exists, false otherwise.</returns>
-        public virtual bool Exists(Expression<Func<T, bool>> predicate)
+        public async virtual Task<bool> Exists(Expression<Func<T, bool>> predicate)
         {
-            return this.collection.AsQueryable<T>().Any(predicate);
+            var entity = await this.collection.Find<T>(predicate).FirstOrDefaultAsync();
+            return entity != null;
         }
 
         /// <summary>
@@ -266,7 +267,7 @@
         /// </remarks>
         public virtual IDisposable RequestStart()
         {
-            return this.collection.Database.RequestStart();
+            throw new NotImplementedException();
         }
 
         /// <summary>
@@ -277,7 +278,7 @@
         /// </remarks>
         public virtual void RequestDone()
         {
-            this.collection.Database.RequestDone();
+            throw new NotImplementedException();
         }
 
         #region IQueryable<T>
@@ -287,7 +288,7 @@
         /// <returns>An IEnumerator&lt;T&gt; object that can be used to iterate through the collection.</returns>
         public virtual IEnumerator<T> GetEnumerator()
         {
-            return this.collection.AsQueryable<T>().GetEnumerator();
+            throw new NotImplementedException();
         }
 
         /// <summary>
@@ -296,7 +297,7 @@
         /// <returns>An IEnumerator object that can be used to iterate through the collection.</returns>
         System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
         {
-            return this.collection.AsQueryable<T>().GetEnumerator();
+            throw new NotImplementedException();
         }
 
         /// <summary>
@@ -304,7 +305,7 @@
         /// </summary>
         public virtual Type ElementType
         {
-            get { return this.collection.AsQueryable<T>().ElementType; }
+            get { throw new NotImplementedException(); }
         }
 
         /// <summary>
@@ -312,7 +313,7 @@
         /// </summary>
         public virtual Expression Expression
         {
-            get { return this.collection.AsQueryable<T>().Expression; }
+            get { throw new NotImplementedException(); }
         }
 
         /// <summary>
@@ -320,7 +321,7 @@
         /// </summary>
         public virtual IQueryProvider Provider
         {
-            get { return this.collection.AsQueryable<T>().Provider; }
+            get { throw new NotImplementedException(); }
         }
         #endregion
     }
