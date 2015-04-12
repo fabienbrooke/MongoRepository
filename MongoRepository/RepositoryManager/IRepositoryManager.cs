@@ -61,7 +61,7 @@
         /// This is a convenience method for EnsureIndexes(IMongoIndexKeys keys, IMongoIndexOptions options).
         /// Index will be ascending order, non-unique, non-sparse.
         /// </remarks>
-        void EnsureIndex(string keyname);
+        Task EnsureIndex(string keyname);
 
         /// <summary>
         /// Ensures that the desired index exist and creates it if it doesn't exist.
@@ -73,7 +73,7 @@
         /// <remarks>
         /// This is a convenience method for EnsureIndexes(IMongoIndexKeys keys, IMongoIndexOptions options).
         /// </remarks>
-        void EnsureIndex(string keyname, bool descending, bool unique, bool sparse);
+        Task EnsureIndex(string keyname, bool descending, bool unique, bool sparse);
 
         /// <summary>
         /// Ensures that the desired indexes exist and creates them if they don't exist.
@@ -83,7 +83,7 @@
         /// This is a convenience method for EnsureIndexes(IMongoIndexKeys keys, IMongoIndexOptions options).
         /// Index will be ascending order, non-unique, non-sparse.
         /// </remarks>
-        void EnsureIndexes(IEnumerable<string> keynames);
+        Task EnsureIndexes(IEnumerable<string> keynames);
 
         /// <summary>
         /// Ensures that the desired indexes exist and creates them if they don't exist.
@@ -95,7 +95,7 @@
         /// <remarks>
         /// This is a convenience method for EnsureIndexes(IMongoIndexKeys keys, IMongoIndexOptions options).
         /// </remarks>
-        void EnsureIndexes(IEnumerable<string> keynames, bool descending, bool unique, bool sparse);
+        Task EnsureIndexes(IEnumerable<string> keynames, bool descending, bool unique, bool sparse);
 
         /// <summary>
         /// Ensures that the desired indexes exist and creates them if they don't exist.
@@ -106,7 +106,7 @@
         /// This is a convenience method for EnsureIndexes(IMongoIndexKeys keys, IMongoIndexOptions options).
         /// Index will be ascending order, non-unique, non-sparse.
         /// </remarks>
-        void EnsureIndexes(IMongoIndexKeys keys, IMongoIndexOptions options);
+        Task EnsureIndexes(IEnumerable<IndexKeysDefinition<T>> keys, CreateIndexOptions options);
 
         /// <summary>
         /// Tests whether indexes exist.

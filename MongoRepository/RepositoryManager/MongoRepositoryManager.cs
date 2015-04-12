@@ -132,9 +132,9 @@
         /// This is a convenience method for EnsureIndexes(IMongoIndexKeys keys, IMongoIndexOptions options).
         /// Index will be ascending order, non-unique, non-sparse.
         /// </remarks>
-        public virtual void EnsureIndex(string keyname)
+        public async virtual Task EnsureIndex(string keyname)
         {
-            this.EnsureIndexes(new string[] { keyname });
+            await this.EnsureIndexes(new string[] { keyname });
         }
 
         /// <summary>
@@ -147,9 +147,9 @@
         /// <remarks>
         /// This is a convenience method for EnsureIndexes(IMongoIndexKeys keys, IMongoIndexOptions options).
         /// </remarks>
-        public virtual void EnsureIndex(string keyname, bool descending, bool unique, bool sparse)
+        public async virtual Task EnsureIndex(string keyname, bool descending, bool unique, bool sparse)
         {
-            this.EnsureIndexes(new string[] { keyname }, descending, unique, sparse);
+            await this.EnsureIndexes(new string[] { keyname }, descending, unique, sparse);
         }
 
         /// <summary>
@@ -160,9 +160,9 @@
         /// This is a convenience method for EnsureIndexes(IMongoIndexKeys keys, IMongoIndexOptions options).
         /// Index will be ascending order, non-unique, non-sparse.
         /// </remarks>
-        public virtual void EnsureIndexes(IEnumerable<string> keynames)
+        public async virtual Task EnsureIndexes(IEnumerable<string> keynames)
         {
-            this.EnsureIndexes(keynames, false, false, false);
+            await this.EnsureIndexes(keynames, false, false, false);
         }
 
         /// <summary>
@@ -175,21 +175,28 @@
         /// <remarks>
         /// This is a convenience method for EnsureIndexes(IMongoIndexKeys keys, IMongoIndexOptions options).
         /// </remarks>
-        public virtual void EnsureIndexes(IEnumerable<string> keynames, bool descending, bool unique, bool sparse)
+        public async virtual Task EnsureIndexes(IEnumerable<string> keynames, bool descending, bool unique, bool sparse)
         {
-            var ixk = new IndexKeysBuilder();
-            if (descending)
+            var ixk = Builders<T>.IndexKeys;
+            var keys = keynames.Select(key =>
             {
-                ixk.Descending(keynames.ToArray());
-            }
-            else
-            {
-                ixk.Ascending(keynames.ToArray());
-            }
+                if (descending)
+                {
+                    return ixk.Descending(key);
+                }
+                else
+                {
+                    return ixk.Ascending(key);
+                }
+            });
 
-            this.EnsureIndexes(
-                ixk,
-                new IndexOptionsBuilder().SetUnique(unique).SetSparse(sparse));
+            await this.EnsureIndexes(
+                keys,
+                new CreateIndexOptions
+                {
+                    Unique = unique,
+                    Sparse = sparse
+                });
         }
 
         /// <summary>
@@ -200,9 +207,13 @@
         /// <remarks>
         /// This method allows ultimate control but does "leak" some MongoDb specific implementation details.
         /// </remarks>
-        public virtual void EnsureIndexes(IMongoIndexKeys keys, IMongoIndexOptions options)
+        public async virtual Task EnsureIndexes(IEnumerable<IndexKeysDefinition<T>> keys, CreateIndexOptions options)
         {
-            throw new NotImplementedException();
+            var tasks = keys.Select(async key =>
+            {
+                await this.collection.Indexes.CreateOneAsync(key, options);
+            });
+            await Task.WhenAll(tasks);
         }
 
         /// <summary>
